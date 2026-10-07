@@ -3,20 +3,10 @@ import { authService } from '../services/authService.js';
 import { requireAuth } from '../middleware/authMiddleware.js';
 import { backupCodesRepo, userRepo } from '../db/index.js';
 import { ipRateLimiter, checkAccountLockout } from '../middleware/rateLimiter.js';
+import { setAuthCookie, clearAuthCookie, getRequestInfo, sendError } from '../utils/http.js';
 
 const router = Router();
 
-function getReqInfo(req) {
-  return {
-    ip: req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress,
-    userAgent: req.headers['user-agent'] || 'Unknown'
-  };
-}
-
-/**
- * Register with Email & Password
- * POST /api/auth/register
- */
 router.post('/register', async (req, res) => {
   try {
     const { email, username, password } = req.body;
@@ -24,30 +14,20 @@ router.post('/register', async (req, res) => {
       email,
       username,
       password,
-      reqInfo: getReqInfo(req)
+      reqInfo: getRequestInfo(req)
     });
 
-    res.cookie('token', result.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
-
+    setAuthCookie(res, result.token);
     res.status(201).json({
       message: 'Registration successful',
       user: result.user,
       token: result.token
     });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    sendError(res, error);
   }
 });
 
-/**
- * Google Sign In / Registration
- * POST /api/auth/google
- */
 router.post('/google', async (req, res) => {
   try {
     const { email, name, googleId, avatarUrl } = req.body;
@@ -56,16 +36,10 @@ router.post('/google', async (req, res) => {
       name,
       googleId,
       avatarUrl,
-      reqInfo: getReqInfo(req)
+      reqInfo: getRequestInfo(req)
     });
 
-    res.cookie('token', result.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
-
+    setAuthCookie(res, result.token);
     res.json({
       success: true,
       user: result.user,
@@ -74,14 +48,10 @@ router.post('/google', async (req, res) => {
       message: result.isNew ? 'Google registration successful' : 'Google login successful'
     });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    sendError(res, error);
   }
 });
 
-/**
- * Update Profile (Username & Gender)
- * PUT /api/auth/profile
- */
 router.put('/profile', requireAuth, async (req, res) => {
   try {
     const { username, gender, avatarUrl } = req.body;
@@ -89,7 +59,7 @@ router.put('/profile', requireAuth, async (req, res) => {
       username,
       gender,
       avatarUrl,
-      reqInfo: getReqInfo(req)
+      reqInfo: getRequestInfo(req)
     });
 
     res.json({
@@ -98,21 +68,17 @@ router.put('/profile', requireAuth, async (req, res) => {
       message: 'Profile updated successfully'
     });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    sendError(res, error);
   }
 });
 
-/**
- * Login (Step 1)
- * POST /api/auth/login
- */
 router.post('/login', ipRateLimiter, checkAccountLockout, async (req, res) => {
   try {
     const { email, username, identifier, password } = req.body;
     const result = await authService.login({
       identifier: identifier || email || username,
       password,
-      reqInfo: getReqInfo(req)
+      reqInfo: getRequestInfo(req)
     });
 
     if (result.requires2FA) {
@@ -124,13 +90,7 @@ router.post('/login', ipRateLimiter, checkAccountLockout, async (req, res) => {
       });
     }
 
-    res.cookie('token', result.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
-
+    setAuthCookie(res, result.token);
     res.json({
       requires2FA: false,
       user: result.user,
@@ -138,19 +98,10 @@ router.post('/login', ipRateLimiter, checkAccountLockout, async (req, res) => {
       message: 'Login successful'
     });
   } catch (error) {
-    const status = error.statusCode || 401;
-    res.status(status).json({
-      error: error.message,
-      isLocked: Boolean(error.isLocked),
-      remainingMinutes: error.remainingMinutes
-    });
+    sendError(res, error, 401);
   }
 });
 
-/**
- * Verify 2FA (Step 2)
- * POST /api/auth/verify-2fa
- */
 router.post('/verify-2fa', ipRateLimiter, checkAccountLockout, async (req, res) => {
   try {
     const { tempToken, code, isBackupCode } = req.body;
@@ -158,16 +109,10 @@ router.post('/verify-2fa', ipRateLimiter, checkAccountLockout, async (req, res) 
       tempToken,
       code,
       isBackupCode: Boolean(isBackupCode),
-      reqInfo: getReqInfo(req)
+      reqInfo: getRequestInfo(req)
     });
 
-    res.cookie('token', result.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
-
+    setAuthCookie(res, result.token);
     res.json({
       success: true,
       user: result.user,
@@ -178,90 +123,65 @@ router.post('/verify-2fa', ipRateLimiter, checkAccountLockout, async (req, res) 
         : 'Two-factor authentication verified'
     });
   } catch (error) {
-    const status = error.statusCode || 400;
-    res.status(status).json({
-      error: error.message,
-      isLocked: Boolean(error.isLocked),
-      remainingMinutes: error.remainingMinutes
-    });
+    sendError(res, error, 400);
   }
 });
 
-/**
- * Current User Profile
- * GET /api/auth/me
- */
 router.get('/me', requireAuth, async (req, res) => {
-  const unusedCodes = await backupCodesRepo.getUnusedCodes(req.user.id);
-  res.json({
-    user: req.user,
-    backupCodesRemaining: unusedCodes.length
-  });
+  try {
+    const unusedCodes = await backupCodesRepo.getUnusedCodes(req.user.id);
+    res.json({
+      user: req.user,
+      backupCodesRemaining: unusedCodes.length
+    });
+  } catch (error) {
+    sendError(res, error, 500);
+  }
 });
 
-/**
- * Get All Registered Users
- * GET /api/auth/users
- */
 router.get('/users', requireAuth, async (req, res) => {
   try {
     const users = await userRepo.getAllUsers();
     res.json({ users });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    sendError(res, error, 500);
   }
 });
 
-/**
- * Start 2FA Setup
- * POST /api/auth/2fa/setup
- */
 router.post('/2fa/setup', requireAuth, async (req, res) => {
   try {
     const data = await authService.setup2FA(req.user.id);
     res.json(data);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    sendError(res, error);
   }
 });
 
-/**
- * Confirm and Enable 2FA
- * POST /api/auth/2fa/confirm
- */
 router.post('/2fa/confirm', requireAuth, async (req, res) => {
   try {
     const { code } = req.body;
-    const result = await authService.confirm2FA(req.user.id, code, getReqInfo(req));
+    const result = await authService.confirm2FA(req.user.id, code, getRequestInfo(req));
     res.json(result);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    sendError(res, error);
   }
 });
 
-/**
- * Disable 2FA
- * POST /api/auth/2fa/disable
- */
 router.post('/2fa/disable', requireAuth, async (req, res) => {
   try {
     const { password } = req.body;
     if (!password) {
       return res.status(400).json({ error: 'Password is required to disable 2FA' });
     }
-    const result = await authService.disable2FA(req.user.id, password, getReqInfo(req));
+    const result = await authService.disable2FA(req.user.id, password, getRequestInfo(req));
     res.json(result);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    sendError(res, error);
   }
 });
 
-/**
- * Logout
- * POST /api/auth/logout
- */
-router.post('/logout', (req, res) => {
-  res.clearCookie('token');
+router.post('/logout', (_req, res) => {
+  clearAuthCookie(res);
   res.json({ success: true, message: 'Logged out successfully' });
 });
 

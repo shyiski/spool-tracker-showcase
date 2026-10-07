@@ -7,10 +7,7 @@ import {
   isMongoActive,
   userRepoMongo,
   backupCodesRepoMongo,
-  authLogsRepoMongo,
-  UserModel,
-  BackupCodeModel,
-  AuthLogModel
+  authLogsRepoMongo
 } from './mongo.js';
 
 const __filename = fileURLToPath(import.meta.url);

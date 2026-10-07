@@ -1,7 +1,7 @@
 {
   "name": "login-pet",
   "version": "1.0.0",
-  "description": "Auth system with 2FA (TOTP) and SQLite database schema in Node.js",
+  "description": "AI-assisted repository for testing and demonstrating Two-Factor Authentication (TOTP 2FA) and secure auth workflows in Node.js & React",
   "main": "src/app.js",
   "type": "module",
   "scripts": {

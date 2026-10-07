@@ -137,5 +137,30 @@ export const bruteForceService = {
     const ipKey = getStoreKey('ip', ip);
     if (idKey) attemptsStore.delete(idKey);
     if (ipKey) attemptsStore.delete(ipKey);
+  },
+
+  assertNotLocked(identifier, ip) {
+    const lockout = this.checkLockout(identifier, ip);
+    if (lockout.isLocked) {
+      const err = new Error(lockout.message);
+      err.statusCode = 429;
+      err.isLocked = true;
+      err.remainingMinutes = lockout.remainingMinutes;
+      throw err;
+    }
+  },
+
+  async failAndThrow(identifier, ip, reqInfo = {}, customMsg = null) {
+    const fail = await this.recordFailure(identifier, ip, reqInfo);
+    const message = fail.isLocked
+      ? fail.message
+      : (customMsg ? `${customMsg} ${fail.remainingAttempts} attempt(s) remaining.` : fail.message);
+    const err = new Error(message);
+    if (fail.isLocked) {
+      err.statusCode = 429;
+      err.isLocked = true;
+      err.remainingMinutes = fail.remainingMinutes;
+    }
+    throw err;
   }
 };

@@ -1,6 +1,8 @@
-# LoginPet — Authentication with 2FA (TOTP), MongoDB Atlas & Mantine UI on Node.js
+# LoginPet — 2FA & Authentication Showcase (AI-Assisted)
 
-A modern web authentication application with two-factor security (TOTP via Google Authenticator / Apple Passwords / Authy), cloud database integration with **MongoDB Atlas**, and a responsive user interface built on **React 19 & Mantine UI**.
+> 🤖 **AI-Assisted Repository**: Проект создан и оптимизирован для тестирования и демонстрации работы двухфакторной аутентификации (2FA / TOTP), защиты от брутфорса, управления резервными кодами восстановления и чистой модульной архитектуры авторизации.
+
+A modern web authentication application with two-factor security (TOTP via Google Authenticator / Apple Passwords / Authy), cloud database integration with **MongoDB Atlas** (with native SQLite fallback), and a responsive modular user interface built on **React 19 & Mantine UI 7**.
 
 ---
 
