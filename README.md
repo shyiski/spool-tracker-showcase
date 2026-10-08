@@ -1,6 +1,6 @@
 # LoginPet — 2FA & Authentication Showcase (AI-Assisted)
 
-> 🤖 **AI-Assisted Repository**: Проект создан и оптимизирован для тестирования и демонстрации работы двухфакторной аутентификации (2FA / TOTP), защиты от брутфорса, управления резервными кодами восстановления и чистой модульной архитектуры авторизации.
+> 🤖 **AI-Assisted Showcase Repository**: Designed for testing, analyzing, and demonstrating secure Two-Factor Authentication (2FA / TOTP), brute-force lockout protection, backup recovery code management, and clean modular authentication architecture.
 
 A modern web authentication application with two-factor security (TOTP via Google Authenticator / Apple Passwords / Authy), cloud database integration with **MongoDB Atlas** (with native SQLite fallback), and a responsive modular user interface built on **React 19 & Mantine UI 7**.
 
